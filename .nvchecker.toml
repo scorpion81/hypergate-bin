@@ -1,0 +1,4 @@
+[hypergate-bin]
+source = "git"
+git = "https://github.com/nekko-labs/hypergate.git"
+prefix = "v"

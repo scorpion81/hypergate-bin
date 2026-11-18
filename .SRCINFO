@@ -1,0 +1,23 @@
+pkgbase = hypergate-bin
+	pkgdesc = Local-first runtime and gateway for MCP servers.
+	pkgver = 1.26.0
+	pkgrel = 1
+	url = https://hypergate.app
+	arch = x86_64
+	license = MIT
+	makedepends = libarchive
+	depends = cairo
+	depends = gdk-pixbuf2
+	depends = glib2
+	depends = gtk3
+	depends = libsoup3
+	depends = webkit2gtk-4.1
+	depends = libxdo3
+	options = !strip
+	options = !emptydirs
+	source = hypergate-linux-x64.deb::https://github.com/nekko-labs/hypergate/releases/download/v1.26.0/hypergate-linux-x64.deb
+	source = hypergate-upstream-LICENSE::https://raw.githubusercontent.com/nekko-labs/hypergate/v1.26.0/LICENSE
+	sha512sums = e541f9a7d5bd83d779f77405da21981c4118392be294314cc1f8fa53fd1fd0c3bd521369a3ab0d0239ab128a7032432867c5a037f3569d57fa32b5b0ac87e4a1
+	sha512sums = 1ac3ac00b68bd0e97f9a12cea04c9aed45ed2bf0da24effccbfcf4ce93ce53e29167245cacbeb8566f9aa6789dda8463bb95f45158561f063f74c8727f736ee6
+
+pkgname = hypergate-bin
