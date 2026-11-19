@@ -8,6 +8,7 @@ path = [
     ".SRCINFO",
     ".gitignore",
     ".nvchecker.toml",
+    "update.sh",
     "*.install",
     "*.sysusers",
     "*sysusers.conf",
