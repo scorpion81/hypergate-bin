@@ -76,6 +76,18 @@ The PKGBUILD has been successfully built and tested on CachyOS (Arch Linux-based
 
 Both the Hypergate graphical application and gateway daemon have been launched and verified locally.
 
+## Updating the package
+
+Run the included update script:
+
+    ./update.sh
+
+The script checks for new upstream releases, updates the PKGBUILD
+and checksums, regenerates .SRCINFO and builds the package.
+
+Changes are never committed or pushed automatically. Review the
+result and commit manually when everything looks good.
+
 ## Contributing
 
 Contributions, testing and maintenance assistance are welcome.
