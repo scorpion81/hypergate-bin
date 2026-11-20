@@ -9,6 +9,11 @@ on:
         required: false
         type: boolean
         default: false
+      create_release:
+        description: 'Create a draft GitHub release'
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -88,13 +93,18 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-      - name: Create update pull request
-        if: ${{ inputs.create_pr }}
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Prepare update branch
+        id: update
+        if: ${{ inputs.create_pr || inputs.create_release }}
         run: |
+          if [[ "$GITHUB_REF" != "refs/heads/master" ]]; then
+            echo "Error: Updates must be created from master."
+            exit 1
+          fi
+
           if git diff --quiet -- PKGBUILD .SRCINFO; then
             echo "No update available."
+            echo "updated=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -105,13 +115,61 @@ jobs:
           git config user.email \
             "41898282+github-actions[bot]@users.noreply.github.com"
 
-          git switch -c "$branch"
+          git switch -C "$branch"
           git add PKGBUILD .SRCINFO
           git commit -m "Update Hypergate to ${version}"
           git push --force origin "$branch"
+
+          echo "updated=true" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "branch=$branch" >> "$GITHUB_OUTPUT"
+
+      - name: Create update pull request
+        if: ${{ inputs.create_pr && steps.update.outputs.updated == 'true' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="${{ steps.update.outputs.version }}"
+          branch="${{ steps.update.outputs.branch }}"
 
           gh pr create \
             --base master \
             --head "$branch" \
             --title "Update Hypergate to ${version}" \
             --body "Automated upstream update. Package built and checked in Arch Linux. Please review dependencies and package contents before merging."
+
+      - name: Create draft release
+        if: ${{ inputs.create_release && steps.update.outputs.updated == 'true' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="${{ steps.update.outputs.version }}"
+          branch="${{ steps.update.outputs.branch }}"
+          tag="v${version}"
+
+          if [[ "$GITHUB_REF" != "refs/heads/master" ]]; then
+            echo "Error: Releases must be created from master."
+            exit 1
+          fi
+
+          # Vorhandenes Tag niemals überschreiben
+          if [[ -n "$(git ls-remote --tags origin "refs/tags/${tag}")" ]]; then
+            echo "Error: Tag ${tag} already exists."
+            exit 1
+          fi
+
+          # Genau beide Pakete müssen vorhanden sein
+          shopt -s nullglob
+          packages=(./*.pkg.tar.zst)
+
+          if [[ ${#packages[@]} -ne 2 ]]; then
+            echo "Error: Expected exactly two packages."
+            exit 1
+          fi
+
+          gh release create "$tag" \
+            "${packages[@]}" \
+            --draft \
+            --title "Hypergate ${version}" \
+            --generate-notes \
+            --target "$branch"
