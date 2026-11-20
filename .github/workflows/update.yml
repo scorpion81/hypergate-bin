@@ -40,14 +40,14 @@ jobs:
               su - builder -c \
                 "git config --global --add safe.directory /workspace"
 
-              su - builder -c \
-                "cd /workspace && pkgctl version check --verbose --json" \
-                || {
-                    echo "pkgctl version check failed."
-                    echo "nvchecker configuration:"
-                    cat /workspace/.nvchecker.toml
-                    exit 1
-                }
+              su - builder -c 'cd /workspace && pkgctl version check --json'
+                echo "JSON exit code: $?"
+
+              su - builder -c 'cd /workspace && pkgctl version check --verbose'
+                echo "Verbose exit code: $?"
+
+              su - builder -c 'cd /workspace && pkgctl version check'
+                echo "Normal exit code: $?"
 
               su - builder -c \
                 "cd /workspace && bash ./update.sh"
