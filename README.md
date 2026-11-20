@@ -1,111 +1,136 @@
 # hypergate-bin
 
-Arch Linux packaging for [Hypergate](https://github.com/nekko-labs/hypergate), a local-first runtime and gateway for MCP servers.
+Unofficial Arch Linux packaging for [Hypergate](https://github.com/nekko-labs/hypergate), a local-first runtime and gateway for Model Context Protocol (MCP) servers.
 
-This repository contains the PKGBUILD and related packaging files required to build and install Hypergate on Arch Linux and Arch-based distributions.
+This repository provides Arch Linux packages built from official upstream sources, together with automated version checking and package builds.
 
-## About Hypergate
+## Packages
 
-Hypergate is a local-first runtime and gateway for Model Context Protocol (MCP) servers, providing a centralized way to manage and connect AI agents with external tools and services.
-
-For more information, visit the [official Hypergate repository](https://github.com/nekko-labs/hypergate).
-
-## Package Information
-
-| Property | Value |
+| Package | Description |
 |---|---|
-| Package name | `hypergate-bin` |
-| Current version | `1.26.0` |
-| Architecture | `x86_64` |
-| Package type | Prebuilt binary |
-| Upstream source | Official GitHub releases |
-| License | MIT |
+| `hypergate-bin` | Hypergate application, gateway daemon and web interface |
+| `libxdo3` | Legacy `libxdo.so.3` compatibility library required by Hypergate |
 
-The package uses the official upstream Debian release and repackages its contents for Arch Linux. No application binaries are modified or rebuilt.
+`hypergate-bin` repackages the official prebuilt Linux release. The upstream application binaries are not modified or rebuilt.
 
-## Dependencies
+`libxdo3` is built separately from the original xdotool source to provide the legacy shared library required by Hypergate.
 
-Runtime dependencies:
+## Installation
 
-- `cairo`
-- `gdk-pixbuf2`
-- `glib2`
-- `gtk3`
-- `libsoup3`
-- `webkit2gtk-4.1`
-- `libxdo3`
+Download both packages from the latest [GitHub Release](https://github.com/scorpion81/hypergate-bin/releases).
 
-Build dependency:
+From the directory containing the downloaded packages, install them with:
 
-- `libarchive`
+```bash
+sudo pacman -U ./libxdo3-*.pkg.tar.zst ./hypergate-bin-*.pkg.tar.zst
+```
 
-## Building
+Both packages must be installed because `hypergate-bin` depends on `libxdo3`.
 
-Clone this repository and build the package using `makepkg`:
+## Building from source
+
+Requirements:
+
+- Arch Linux or an Arch-based distribution
+- `base-devel`
+- Git
+
+Clone the repository:
 
 ```bash
 git clone https://github.com/scorpion81/hypergate-bin.git
 cd hypergate-bin
+```
+
+Build and install the compatibility library first:
+
+```bash
+cd libxdo3
+makepkg -si
+cd ..
+```
+
+Then build and install Hypergate:
+
+```bash
 makepkg -si
 ```
 
-`makepkg` downloads the official upstream Debian package and license file, verifies their SHA512 checksums, extracts the application and creates an Arch Linux package.
+`makepkg` downloads the official upstream sources, verifies their checksums and creates the corresponding Arch Linux package.
 
-## Installed Files
+## Installed files
 
-The package installs:
+The `hypergate-bin` package installs:
 
 - Hypergate application: `/usr/lib/hypergate/hypergate`
-- Hypergate daemon: `/usr/lib/hypergate/hypergated`
+- Gateway daemon: `/usr/lib/hypergate/hypergated`
 - Command-line launchers: `/usr/bin/hypergate` and `/usr/bin/hypergated`
 - Web interface assets: `/usr/lib/hypergate/web/`
 - Desktop entry: `/usr/share/applications/hypergate.desktop`
 - Application icon: `/usr/share/icons/hicolor/scalable/apps/hypergate.svg`
 
-## Version Updates
+## Automated updates
 
-Upstream releases are tracked using [nvchecker](https://github.com/lilydjwg/nvchecker).
+Upstream versions are tracked using [nvchecker](https://github.com/lilydjwg/nvchecker).
 
-The `.nvchecker.toml` configuration tracks Git tags in the official Hypergate repository and uses the `v` prefix to detect new releases.
+The repository includes an update script:
 
-After an upstream release, update `pkgver`, refresh the source checksums, regenerate `.SRCINFO`, and test the package build.
+```bash
+./update.sh
+```
+
+It:
+
+1. Checks the latest upstream release.
+2. Updates the package version and source checksums when necessary.
+3. Verifies the downloaded sources.
+4. Regenerates `.SRCINFO`.
+5. Builds the package.
+6. Runs `namcap` checks on the PKGBUILD and generated package.
+
+Changes are not committed or pushed automatically by this script. They can be reviewed and committed manually.
+
+## GitHub Actions
+
+The repository also provides a manually triggered GitHub Actions workflow.
+
+It builds the packages inside an Arch Linux container and uploads the resulting packages as workflow artifacts.
+
+Two optional workflow inputs are available:
+
+- `create_pr`: Create a pull request containing the upstream version update.
+- `create_release`: Create a draft GitHub Release containing both packages.
+
+Both options are disabled by default.
+
+When requested, the workflow creates an update branch based on `master`. Draft releases are created only when both packages are available. Existing version tags are never overwritten.
+
+Releases remain drafts until manually reviewed and published.
 
 ## Status
 
-The PKGBUILD has been successfully built and tested on CachyOS (Arch Linux-based).
+The packages have been successfully built, installed and tested on CachyOS (Arch Linux-based).
 
 Both the Hypergate graphical application and gateway daemon have been launched and verified locally.
 
-## Updating the package
-
-Run the included update script:
-
-    ./update.sh
-
-The script checks for new upstream releases, updates the PKGBUILD
-and checksums, regenerates .SRCINFO and builds the package.
-
-Changes are never committed or pushed automatically. Review the
-result and commit manually when everything looks good.
+The repository's automated build workflow has also been tested successfully using GitHub Actions.
 
 ## Contributing
 
 Contributions, testing and maintenance assistance are welcome.
 
-This packaging project is intended to make the official Hypergate Linux release conveniently available to Arch Linux users.
-
-If you are interested in maintaining this package in the AUR, feel free to open an issue or submit a pull request.
+If you encounter packaging issues or have suggestions, please open an issue or submit a pull request.
 
 ## Disclaimer
 
-This is an unofficial community packaging project and is not affiliated with or endorsed by Nekko Labs.
+This is an unofficial community packaging project. It is not affiliated with or endorsed by Nekko Labs.
 
-Hypergate itself is developed and maintained by [Nekko Labs](https://github.com/nekko-labs/hypergate).
+Hypergate is developed and maintained by [Nekko Labs](https://github.com/nekko-labs/hypergate).
 
-## License
+## Licenses
 
-The packaging files in this repository are licensed under the
-BSD Zero Clause License (0BSD).
+- Packaging files: [BSD Zero Clause License (0BSD)](https://opensource.org/license/0bsd)
+- Hypergate: MIT License (upstream)
+- `libxdo3`: BSD-3-Clause License (upstream xdotool)
 
-Hypergate itself is distributed under its own upstream license.
-See the [official Hypergate repository](https://github.com/nekko-labs/hypergate).
+Please refer to the respective upstream projects for their license terms.
