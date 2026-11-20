@@ -1,0 +1,86 @@
+
+name: Check upstream release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Build in Arch Linux
+        run: |
+          docker run --rm \
+            -v "$GITHUB_WORKSPACE:/workspace" \
+            -w /workspace \
+            archlinux:base-devel \
+            bash -euo pipefail -c '
+              pacman -Syu --noconfirm --needed \
+                devtools namcap git sudo nvchecker
+
+              uid=$(stat -c %u /workspace)
+              gid=$(stat -c %g /workspace)
+
+              groupadd --gid "$gid" builder
+              useradd -m -u "$uid" -g "$gid" \
+                --shell /bin/bash builder
+
+              printf "builder ALL=(ALL) NOPASSWD: /usr/bin/pacman\n" \
+                > /etc/sudoers.d/builder
+              chmod 440 /etc/sudoers.d/builder
+
+              su - builder -c \
+                "git config --global --add safe.directory /workspace"
+
+              su - builder -c \
+                "cd /workspace && bash ./update.sh"
+
+              package=$(find /workspace -maxdepth 1 \
+                -name "*.pkg.tar.zst" -print -quit)
+
+              test -n "$package"
+              su - builder -c "namcap \"$package\""
+            '
+
+      - name: Upload package
+        uses: actions/upload-artifact@v4
+        with:
+          name: hypergate-bin-package
+          path: '*.pkg.tar.zst'
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Create update pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if git diff --quiet -- PKGBUILD .SRCINFO; then
+            echo "No update available."
+            exit 0
+          fi
+
+          version=$(sed -n 's/^pkgver=//p' PKGBUILD | head -n1)
+          branch="automation/update-${version}"
+
+          git config user.name "github-actions[bot]"
+          git config user.email \
+            "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git switch -c "$branch"
+          git add PKGBUILD .SRCINFO
+          git commit -m "Update Hypergate to ${version}"
+          git push --force origin "$branch"
+
+          gh pr create \
+            --base master \
+            --head "$branch" \
+            --title "Update Hypergate to ${version}" \
+            --body "Automated upstream update. Package built and checked in Arch Linux. Please review dependencies and package contents before merging."

@@ -9,6 +9,7 @@ path = [
     ".gitignore",
     ".nvchecker.toml",
     "update.sh",
+    ".github/workflows/*.yml",
     "*.install",
     "*.sysusers",
     "*sysusers.conf",
