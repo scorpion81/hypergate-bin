@@ -3,6 +3,12 @@ name: Check upstream release
 
 on:
   workflow_dispatch:
+    inputs:
+      create_pr:
+        description: 'Create a pull request on GitHub'
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -18,56 +24,72 @@ jobs:
 
       - name: Build in Arch Linux
         run: |
-          docker run --rm \
+          docker run --rm -i \
+            -e GITHUB_ACTIONS \
+            -e ACT \
             -v "$GITHUB_WORKSPACE:/workspace" \
             -w /workspace \
             archlinux:base-devel \
-            bash -euo pipefail -c '
-              pacman -Syu --noconfirm --needed \
-                devtools namcap git sudo nvchecker
+            bash -s <<'ARCH'
+          set -Eeuo pipefail
 
-              uid=$(stat -c %u /workspace)
-              gid=$(stat -c %g /workspace)
+          pacman -Syu --noconfirm --needed \
+            devtools namcap git jq nvchecker sudo \
+            libx11 libxi libxinerama libxkbcommon libxtst pkgconf
 
-              groupadd --gid "$gid" builder
-              useradd -m -u "$uid" -g "$gid" \
-                --shell /bin/bash builder
+          # Unprivilegierten Build-Benutzer anlegen
+          groupadd --system builder
+          useradd --system --create-home \
+            --gid builder --shell /bin/bash builder
 
-              printf "builder ALL=(ALL) NOPASSWD: /usr/bin/pacman\n" \
-                > /etc/sudoers.d/builder
-              chmod 440 /etc/sudoers.d/builder
+          # sudo für die Dependency-Auflösung von makepkg
+          printf 'builder ALL=(ALL:ALL) NOPASSWD: /usr/bin/pacman\n' \
+            > /etc/sudoers.d/builder
+          chmod 440 /etc/sudoers.d/builder
+          visudo -cf /etc/sudoers.d/builder
 
-              su - builder -c \
-                "git config --global --add safe.directory /workspace"
+          # Repository in den Container kopieren
+          mkdir -p /build
+          cp -a /workspace/. /build/
+          chown -R builder:builder /build
 
-              su - builder -c 'cd /workspace && pkgctl version check --json'
-                echo "JSON exit code: $?"
+          # Git-Verzeichnis für builder freigeben
+          su - builder -s /bin/bash -c \
+            "git config --global --add safe.directory /build"
 
-              su - builder -c 'cd /workspace && pkgctl version check --verbose'
-                echo "Verbose exit code: $?"
+          # Legacy-Bibliothek bauen und installieren
+          su - builder -s /bin/bash -c \
+            "cd /build/libxdo3 && makepkg -Csf --noconfirm"
 
-              su - builder -c 'cd /workspace && pkgctl version check'
-                echo "Normal exit code: $?"
+          pacman -U --noconfirm /build/libxdo3/*.pkg.tar.zst
 
-              su - builder -c \
-                "cd /workspace && bash ./update.sh"
+          # Hypergate aktualisieren und bauen
+          su - builder -s /bin/bash -c \
+            'cd /build && GITHUB_ACTIONS="$1" ACT="$2" bash -x ./update.sh' \
+            _ "${GITHUB_ACTIONS:-}" "${ACT:-}"
 
-              package=$(find /workspace -maxdepth 1 \
-                -name "*.pkg.tar.zst" -print -quit)
+          # Paketmetadaten und beide Pakete zurückkopieren
+          cp -f /build/PKGBUILD /build/.SRCINFO /workspace/
+          cp -f /build/libxdo3/*.pkg.tar.zst /workspace/
 
-              test -n "$package"
-              su - builder -c "namcap \"$package\""
-            '
+          for package in /build/*.pkg.tar.zst; do
+            [[ -f "$package" ]] || continue
+            cp -f "$package" /workspace/
+          done
+
+          ARCH
 
       - name: Upload package
+        if: ${{ !env.ACT }}
         uses: actions/upload-artifact@v4
         with:
           name: hypergate-bin-package
-          path: '*.pkg.tar.zst'
+          path: "**/*.pkg.tar.zst"
           if-no-files-found: error
           retention-days: 14
 
       - name: Create update pull request
+        if: ${{ inputs.create_pr }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: |

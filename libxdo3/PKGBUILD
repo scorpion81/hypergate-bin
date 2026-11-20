@@ -1,0 +1,27 @@
+
+pkgname=libxdo3
+pkgver=3.20211022.1
+pkgrel=1
+pkgdesc="Legacy libxdo shared library (SONAME 3)"
+arch=('x86_64')
+url="https://github.com/jordansissel/xdotool"
+license=('BSD-3-Clause')
+
+depends=('glibc' 'libx11' 'libxi' 'libxinerama' 'libxkbcommon' 'libxtst')
+makedepends=('gcc' 'make' 'pkgconf')
+
+source=("https://github.com/jordansissel/xdotool/releases/download/v${pkgver}/xdotool-${pkgver}.tar.gz")
+sha256sums=('96f0facfde6d78eacad35b91b0f46fecd0b35e474c03e00e30da3fdd345f9ada')
+
+options=('!debug')
+
+build() {
+  cd "xdotool-${pkgver}"
+  make libxdo.so libxdo.so.3
+}
+
+package() {
+  cd "xdotool-${pkgver}"
+  install -Dm755 libxdo.so "${pkgdir}/usr/lib/libxdo.so.3"
+  install -Dm644 COPYRIGHT "${pkgdir}/usr/share/licenses/${pkgname}/COPYRIGHT"
+}

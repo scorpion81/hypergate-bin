@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Hypergate
+Comment=Local-first runtime and gateway for MCP servers
+Exec=/usr/lib/hypergate/hypergate app
+Icon=hypergate
+Terminal=false
+Categories=Development;Utility;
+Keywords=MCP;AI;agent;gateway;

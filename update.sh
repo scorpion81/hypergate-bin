@@ -1,62 +1,82 @@
 
 #!/usr/bin/env bash
 
-# Helper script to check for upstream updates,
-# refresh PKGBUILD metadata and rebuild the package.
+# Check for upstream updates, refresh PKGBUILD metadata
+# and build the package.
 
 set -Eeuo pipefail
 
-# Must run from the package repository
 if [[ ! -f PKGBUILD || ! -f .nvchecker.toml ]]; then
     echo "Error: Run this script from the hypergate-bin directory."
     exit 1
 fi
 
-# Avoid overwriting uncommitted changes
-if [[ -n "$(git status --porcelain)" ]]; then
+if [[ "${GITHUB_ACTIONS:-}" == "true" &&
+      "${ACT:-}" != "true" ]] &&
+   [[ -n "$(git status --porcelain)" ]]; then
     echo "Error: Git working tree is not clean."
     echo "Commit or stash your changes first."
     exit 1
 fi
 
-echo "Checking upstream version..."
-set +e
-pkgctl version check
-result=$?
-set -e
+check_upstream() {
+    local report rc
 
-case "$result" in
-    0)
-        echo "Hypergate is already up to date."
-        exit 0
-        ;;
-    2)
-        echo "New version detected."
-        ;;
-    *)
-        echo "Version check failed (exit code $result)."
-        exit "$result"
-        ;;
-esac
+    report=$(mktemp)
 
-echo
-echo "Updating PKGBUILD and checksums..."
-pkgctl version upgrade
+    echo "Checking upstream version..." >&2
 
-echo
-echo "Verifying updated version against upstream..."
-if ! pkgctl version check; then
-    echo "Error: PKGBUILD does not match the latest upstream version."
-    echo "Keeping existing source files."
-    exit 1
+    if pkgctl version check --json > "$report"; then
+        rc=0
+    else
+        rc=$?
+    fi
+
+    if ! jq -e '
+        type == "array" and
+        length == 1 and
+        .[0].status == "success" and
+        (.[0].out_of_date | type == "boolean")
+    ' "$report" >/dev/null; then
+        cat "$report"
+        echo "Error: Version check failed (exit code $rc)."
+        rm -f "$report"
+        return 1
+    fi
+
+    cat "$report" >&2
+    jq -r '.[0].out_of_date' "$report"
+
+    rm -f "$report"
+}
+
+out_of_date=$(check_upstream)
+
+if [[ "$out_of_date" == "true" ]]; then
+    echo
+    echo "New version detected. Updating PKGBUILD..."
+
+    pkgctl version upgrade --verbose || true
+
+    echo "Updated package version:"
+    grep -E '^(pkgver|pkgrel)=' PKGBUILD
+
+    echo
+    echo "Verifying updated version..."
+
+    out_of_date=$(check_upstream)
+
+    if [[ "$out_of_date" != "false" ]]; then
+        echo "Error: PKGBUILD does not match upstream version."
+        exit 1
+    fi
+else
+    echo
+    echo "Hypergate is already up to date."
 fi
 
 echo
-echo "Removing cached upstream sources..."
-rm -f hypergate-linux-x64.deb hypergate-upstream-LICENSE
-
-echo
-echo "Downloading and verifying fresh sources..."
+echo "Downloading and verifying sources..."
 makepkg --verifysource
 
 echo
@@ -65,11 +85,15 @@ makepkg --printsrcinfo > .SRCINFO
 
 echo
 echo "Building package..."
-makepkg -Csf
+makepkg -Csf --noconfirm
 
 echo
 echo "Checking PKGBUILD..."
 namcap PKGBUILD
+
+echo
+echo "Checking package..."
+namcap ./*.pkg.tar.zst
 
 echo
 echo "Changes:"

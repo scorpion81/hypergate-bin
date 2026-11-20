@@ -9,6 +9,7 @@ path = [
     ".gitignore",
     ".nvchecker.toml",
     "update.sh",
+    "hypergate.svg",
     ".github/workflows/*.yml",
     "*.install",
     "*.sysusers",
