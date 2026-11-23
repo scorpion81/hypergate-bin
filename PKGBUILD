@@ -50,4 +50,12 @@ package() {
 
     install -Dm644 "${srcdir}/hypergate.svg" \
         "${pkgdir}/usr/share/icons/hicolor/scalable/apps/hypergate.svg"
+
+    install -dm755 "${pkgdir}/usr/bin"
+
+    ln -s ../lib/hypergate/hypergate \
+        "${pkgdir}/usr/bin/hypergate"
+
+    ln -s ../lib/hypergate/hypergated \
+        "${pkgdir}/usr/bin/hypergated"
 }
