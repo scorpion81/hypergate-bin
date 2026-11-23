@@ -15,6 +15,9 @@ on:
         type: boolean
         default: false
 
+  schedule:
+    - cron: '23 7 * * *'
+
 permissions:
   contents: write
   pull-requests: write
@@ -95,7 +98,7 @@ jobs:
 
       - name: Prepare update branch
         id: update
-        if: ${{ inputs.create_pr || inputs.create_release }}
+        if: ${{ github.event_name == 'schedule' || inputs.create_pr || inputs.create_release }}
         run: |
           if [[ "$GITHUB_REF" != "refs/heads/master" ]]; then
             echo "Error: Updates must be created from master."
@@ -125,7 +128,7 @@ jobs:
           echo "branch=$branch" >> "$GITHUB_OUTPUT"
 
       - name: Create update pull request
-        if: ${{ inputs.create_pr && steps.update.outputs.updated == 'true' }}
+        if: ${{ (github.event_name == 'schedule' || inputs.create_pr) && steps.update.outputs.updated == 'true' }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -139,7 +142,7 @@ jobs:
             --body "Automated upstream update. Package built and checked in Arch Linux. Please review dependencies and package contents before merging."
 
       - name: Create draft release
-        if: ${{ inputs.create_release && steps.update.outputs.updated == 'true' }}
+        if: ${{ (github.event_name == 'schedule' || inputs.create_release) && steps.update.outputs.updated == 'true' }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
