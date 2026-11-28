@@ -1,6 +1,6 @@
 pkgbase = hypergate-bin
 	pkgdesc = Local-first runtime and gateway for MCP servers.
-	pkgver = 1.33.0
+	pkgver = 1.37.0
 	pkgrel = 1
 	url = https://hypergate.app
 	arch = x86_64
@@ -14,10 +14,10 @@ pkgbase = hypergate-bin
 	depends = libxdo3
 	options = !strip
 	options = !emptydirs
-	source = https://github.com/nekko-labs/hypergate/releases/download/v1.33.0/hypergate-1.33.0-linux-amd64.tar.gz
+	source = https://github.com/nekko-labs/hypergate/releases/download/v1.37.0/hypergate-1.37.0-linux-amd64.tar.gz
 	source = hypergate.desktop
 	source = hypergate.svg
-	sha512sums = 3812acfc920f4f827a7a60c5b620375de2bcccbfd9e72c239121ca3e8c412da95374fe692292a2494e290ab53355a48206de07db36eb3d8fa57e6a5585b93e2a
+	sha512sums = 027917b7b1b22cc99dcc37f39da0e0f98e68c43c6a7bc596f29a97253488d10c069191ea3de2de82a1c0f0f310436c884595bc86e76c0c6b4a3d420f566b44da
 	sha512sums = d8f504108098f6f966920508428689da2269d4851998c27bfc3751374ea77273fb4446647361e8b630c2a580cd47a8399469414221e36ba71e18149ae3d10b62
 	sha512sums = 687397a55de54566f75e37d21ecedb893087bdb080052a4ce0b1b3c9abe7142d133c716cb0b7fa24529854e8988b5e3aad59bf3d9fd5eb892c019b861e64f645
 
